@@ -1,12 +1,6 @@
 import {getDatabase, ref, onValue, child, push, get, remove} from "firebase/database";
 import app from "../firebase";
 import {useEffect, useState} from "react";
-import {Configuration, OpenAIApi} from "openai";
-
-const configuration = new Configuration({
-    apiKey: "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",
-});
-const openai = new OpenAIApi(configuration);
 
 export default function Chat() {
     const [messages, setMessages] = useState([]);
@@ -17,15 +11,12 @@ export default function Chat() {
     useEffect(() => {
         const unsubscribe = onValue(roomRef, (snapshot) => {
             const data = snapshot.val();
-            setMessages(Object.values(data.messages));
-        });
-        return () => unsubscribe();
-    }, [roomRef]);
-
-    useEffect(() => {
-        const unsubscribe = onValue(roomRef, (snapshot) => {
-            const data = snapshot.val();
-            setUsers(Object.values(data.users));
+            if (Object.values(data.users).length !== users.length) {
+                setUsers(Object.values(data.users));
+            }
+            if (Object.values(data.messages).length !== messages.length) {
+                setMessages(Object.values(data.messages));
+            }
         });
         return () => unsubscribe();
     }, [roomRef]);
@@ -41,18 +32,18 @@ export default function Chat() {
         }
 
         // Convert the user's message to a shakespearian style message
-        const prompt = message + "\n\n" + "Convert to Shakespearean style:";
+        const prompt = message + "\n\n" + "Randomly convert the message to how a random celebrity would speak:";
         const response = await fetch("https://api.openai.com/v1/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer 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",
+                "Authorization": "Bearer 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",
             },
             body: JSON.stringify({
                 model: "text-davinci-003",
                 prompt: prompt,
                 max_tokens: 100,
-                temperature: 0.9,
+                temperature: 1.0,
             })
         });
         const responsejson = await response.json()
@@ -60,6 +51,11 @@ export default function Chat() {
             username: localStorage.getItem("username"),
             message: responsejson.choices[0].text,
         });
+    }
+
+    const clearMessages = async () => {
+        await remove(child(roomRef, "messages"));
+        setMessages([]);
     }
 
     const leaveRoom = async () => {
@@ -106,13 +102,29 @@ export default function Chat() {
             <div className={'w-full bg-gray-100'}>
                 <div className={'p-4'}>
                     <h1 className={'text-2xl font-bold'}>Send a message:</h1>
-                    <input type="text" value={message} onChange={(e) => setMessage(e.target.value)}/>
-                    <button onClick={() => sendMessage(message)}>Send</button>
+                    <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={
+                        (e) => {
+                            if (e.key === "Enter") {
+                                sendMessage(message);
+                                setMessage("");
+                            }
+                        }
+                    }/>
+                    <button onClick={() => {
+                        sendMessage(message)
+                        setMessage("")
+                    }}>Send
+                    </button>
                 </div>
             </div>
             <div className={'w-full bg-gray-100'}>
                 <div className={'p-4'}>
                     <button onClick={() => leaveRoom()}>Leave Room</button>
+                </div>
+            </div>
+            <div className={'w-full bg-gray-100'}>
+                <div className={'p-4'}>
+                    <button onClick={() => clearMessages()}>Clear Messages</button>
                 </div>
             </div>
         </div>

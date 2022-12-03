@@ -35,6 +35,7 @@ export default function Home() {
             // Add ourselves to the room
             push(child(roomRef, "users"), localStorage.getItem("username"));
             localStorage.setItem("room", roomName.toLowerCase());
+            navigate("/chat");
         } else {
             await set(roomRef, {
                 messages: [],
